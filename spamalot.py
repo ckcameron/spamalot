@@ -94,6 +94,8 @@ def normalize_slug(value: str) -> str:
     return value
 
 
+# Source files are editable input, not trusted configuration. Validate every
+# address and opt-out field before a record can reach the local registry.
 def validated_source(record: dict) -> dict:
     if not isinstance(record, dict):
         raise ValueError('Each source must be a JSON object / CSV row.')
@@ -126,6 +128,8 @@ def validated_source(record: dict) -> dict:
     return {k: str(row[k]).strip() for k in SOURCE_COLUMNS}
 
 
+# Keep schema creation and forward-only migrations together. The database is a
+# durable audit log; upgrading it must never silently reset request history.
 def connect(db_path: Path) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
@@ -194,6 +198,8 @@ def connect(db_path: Path) -> sqlite3.Connection:
     return conn
 
 
+# Import is deliberately conservative: existing entries survive unless the
+# operator explicitly requests metadata replacement.
 def import_sources(conn: sqlite3.Connection, items: list[dict], update: bool = False,
                    origin: str = 'imported') -> tuple[int, int]:
     validated = [validated_source(i) for i in items]
@@ -299,6 +305,8 @@ Results are user-reported requests, not verified merchant acceptances.
 ''')
 
 
+# Acknowledgment is intentionally interactive. This is not an unattended
+# bulk-subscription tool and there is no --yes shortcut.
 def acknowledge() -> str:
     disclaimer()
     if not sys.stdin.isatty():
@@ -311,6 +319,8 @@ def acknowledge() -> str:
     return AGREEMENT
 
 
+# A run groups all per-source decisions under one audit identifier. It tracks
+# what the operator attempted, not what a publisher ultimately accepted.
 def new_run(conn: sqlite3.Connection, operation: str, agreement: str) -> dict:
     run = {'run_id': str(uuid.uuid4()), 'operation': operation, 'started_at': utc_now(),
            'agreement': agreement, 'events': [], 'notices': [], 'version': VERSION}
@@ -334,6 +344,8 @@ def record(conn: sqlite3.Connection, run: dict, row: sqlite3.Row, action: str,
     run['events'].append(event)
 
 
+# Write the local receipt before marking the database run complete. The
+# restrictive file mode avoids publishing the user's audit trail by accident.
 def finalize(conn: sqlite3.Connection, run: dict, receipts_dir: Path) -> Path:
     run['completed_at'] = utc_now()
     run['summary'] = {'events': len(run['events']),
@@ -349,6 +361,8 @@ def finalize(conn: sqlite3.Connection, run: dict, receipts_dir: Path) -> Path:
     return receipt
 
 
+# State is derived from recorded events rather than a writable "subscribed"
+# flag. An attempt is not proof that a publisher changed its mailing list.
 def latest_state(conn: sqlite3.Connection, slug: str) -> str:
     events = conn.execute('''SELECT action,status FROM events
       WHERE source_slug=? ORDER BY timestamp DESC,rowid DESC''', (slug,)).fetchall()
@@ -366,6 +380,8 @@ def ever_subscribed(conn: sqlite3.Connection, slug: str) -> bool:
       AND status IN ('user_reported_submitted','site_confirmation_observed','request_unverified') LIMIT 1''', (slug,)).fetchone() is not None
 
 
+# Resolve explicit slugs, selection files, and --all in one place. Opt-out
+# selection intentionally includes broken and manually disabled sources.
 def pick_sources(conn: sqlite3.Connection, args: argparse.Namespace, action: str) -> list[sqlite3.Row]:
     rows = {r['slug']: r for r in conn.execute('SELECT * FROM sources ORDER BY name COLLATE NOCASE')}
     names: list[str] = []
@@ -407,6 +423,8 @@ def pick_sources(conn: sqlite3.Connection, args: argparse.Namespace, action: str
     return [r for r in selected if category_matches(r['category'], args.category)]
 
 
+# Browser automation is opt-in and form-specific. No guessed controls, hidden
+# browsing, or CAPTCHA handling: the operator reviews each visible form.
 def automation_interactive(row: sqlite3.Row, action: str, profile: dict) -> tuple[str, str]:
     try:
         from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout  # type: ignore
@@ -515,6 +533,8 @@ def apply_url_change(conn: sqlite3.Connection, run: dict, row: sqlite3.Row,
     conn.commit()
 
 
+# A health check examines publicly visible URLs only. A reachable page is
+# not evidence of a functional signup, and ambiguous errors warrant review.
 def check_sources(conn: sqlite3.Connection, run: dict, rows: list[sqlite3.Row],
                   timeout: int, delay: float, repair: bool, suggest: bool,
                   failure_threshold: int) -> dict:
@@ -577,6 +597,8 @@ def check_sources(conn: sqlite3.Connection, run: dict, rows: list[sqlite3.Row],
     return summary
 
 
+# AI search output goes into a quarantine table. Promotion requires independent
+# inspection of both the print signup and the physical-mail removal procedure.
 def discover_candidates(conn: sqlite3.Connection, provider: str, model: str,
                         category: str, max_candidates: int, check: bool) -> list[dict]:
     answer, citations = request_candidates(provider, model, category)
@@ -614,6 +636,8 @@ def discover_candidates(conn: sqlite3.Connection, provider: str, model: str,
     return stored
 
 
+# Export is a snapshot of locally eligible records, not a claim that every
+# destination currently accepts postal requests.
 def export_sources(conn: sqlite3.Connection, target: Path, include_review: bool) -> int:
     rows = conn.execute('''SELECT * FROM sources
             WHERE default_enabled=1 AND health != 'broken' AND
@@ -628,6 +652,8 @@ def export_sources(conn: sqlite3.Connection, target: Path, include_review: bool)
     return len(rows)
 
 
+# CLI parsing is kept at the boundary so database and provider functions can
+# be exercised without launching a browser or issuing external requests.
 def run_main() -> int:
     parser = argparse.ArgumentParser(
         prog='spamalot',
