@@ -46,6 +46,26 @@ email/SMS or solicitation preferences; inspect and decline unwanted channels.
 
 ---
 
+## Project documentation
+
+The source-controlled [wiki documentation](wiki/Home.md) contains a full
+[setup guide](wiki/Getting-Started.md), [command reference](wiki/Commands.md),
+[source registry and import reference](wiki/Sources-and-Formats.md),
+[health-check and link-repair notes](wiki/Source-Health.md),
+[AI research workflow](wiki/AI-Discovery.md),
+[browser-assisted operations](wiki/Browser-Operations.md),
+[receipt and SQLite model](wiki/Receipts-and-Data.md),
+[architecture](wiki/Architecture.md), [developer notes](wiki/Development.md),
+[legal and recipient restrictions](wiki/Safety-and-Licensing.md), and
+[troubleshooting](wiki/Troubleshooting.md).
+
+GitHub serves the live wiki from a separate Git repository, so the tracked
+`wiki/` directory remains the reviewable reference copy. After enabling the
+repository Wiki and creating its initial page, run the
+[manual Sync wiki workflow](.github/workflows/sync-wiki.yml) with an authorized
+`WIKI_PUSH_TOKEN` secret to publish these pages. The repository's Wiki tab
+is **not** populated merely by committing files under `wiki/`.
+
 ## Installation
 
 From a clone or unpacked source directory, install with Python 3.10 or later:
