@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-MAN = r''' .TH SPAMALOT 1 "2026-11-03" "spamalot 2.1" "User Commands"
+# This file is the canonical source for generated man pages and command docs.
+# Edit these templates, then run "python3 spamalot.py build-docs --output .".
+
+MAN = r''' .TH SPAMALOTMAN = r''' .TH SPAMALOT 1 "2026-11-03" "spamalot 2.1" "User Commands"
 .SH NAME
 spamalot \- manage consenting U.S. physical-postal catalog and print subscriptions
 .SH SYNOPSIS
