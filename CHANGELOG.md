@@ -1,5 +1,7 @@
 # Changelog
 
+Last signed update: 11 November, 2026
+
 ## 2.1.0 — Spamalot name and presentation
 
 - Renamed the executable module to `spamalot.py` and the Unix man page to `spamalot(1)`.
