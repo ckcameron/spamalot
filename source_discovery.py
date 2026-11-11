@@ -32,6 +32,8 @@ class ProviderError(RuntimeError):
     pass
 
 
+# Provider traffic contains a research prompt only. Never pass profile.json,
+# mailing details, local event history, or stored source credentials.
 def json_post(url: str, headers: dict, payload: dict, timeout: int = 90) -> dict:
     req = Request(url, data=json.dumps(payload).encode('utf-8'), headers={
         'Content-Type': 'application/json', 'Accept': 'application/json', **headers,
@@ -50,6 +52,8 @@ def json_post(url: str, headers: dict, payload: dict, timeout: int = 90) -> dict
         raise ProviderError('AI provider returned invalid JSON') from exc
 
 
+# Each provider has its own response schema. Return normalized candidate text
+# and citation URLs; do not treat model text as validated source metadata.
 def request_candidates(provider: str, model: str, category: str = '', timeout: int = 90,
                        requester=json_post) -> tuple[str, list[str]]:
     """Return text response and provenance URLs, without exposing API keys."""
