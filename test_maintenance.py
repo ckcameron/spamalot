@@ -7,6 +7,7 @@ import os
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
@@ -46,8 +47,7 @@ class HealthTests(unittest.TestCase):
         self.assertEqual(result.suggested_url, '')
 
     def test_two_missing_page_checks_disable_source_without_deleting_history(self):
-        with tempfile.TemporaryDirectory() as temp:
-            conn = pm.connect(Path(temp) / 'mail.db')
+        with tempfile.TemporaryDirectory() as temp, closing(pm.connect(Path(temp) / 'mail.db')) as conn:
             pm.import_sources(conn, pm.load_default_sources(), origin='bundled')
             row = conn.execute("SELECT * FROM sources WHERE slug='territorial'").fetchone()
             run = pm.new_run(conn, 'subscribe', pm.AGREEMENT)

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Offline regression tests: NO LIVE SUBSCRIPTIONS OR WEB REQUESTS."""
+import csv
 import json
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 import spamalot as pm
@@ -44,8 +46,28 @@ class SourceTests(unittest.TestCase):
         self.assertTrue(pm.category_matches('Catalog / Home', []))
 
     def test_csv_json_import(self):
-        items=pm.load_default_sources()
-        self.assertGreaterEqual(len(items),25)
+        source = {
+            'slug': 'test-catalog',
+            'name': 'Test Print Catalog',
+            'subscribe_url': 'https://publisher.example/request',
+            'unsubscribe_url': 'https://publisher.example/stop',
+            'optout_instructions': 'Ask the publisher to stop sending the printed catalog.',
+            'evidence_url': 'https://publisher.example/preferences',
+        }
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            csv_path = root / 'sources.csv'
+            with csv_path.open('w', encoding='utf-8', newline='') as file:
+                writer = csv.DictWriter(file, fieldnames=list(source))
+                writer.writeheader()
+                writer.writerow(source)
+            json_path = root / 'sources.json'
+            json_path.write_text(json.dumps({'sources': [source]}), encoding='utf-8')
+            for path in (csv_path, json_path):
+                with self.subTest(format=path.suffix), closing(pm.connect(root / f'{path.suffix}.db')) as db:
+                    self.assertEqual(pm.import_sources(db, pm.read_sources_file(path)), (1, 0))
+                    row = db.execute('SELECT unsubscribe_url, default_enabled FROM sources').fetchone()
+                    self.assertEqual(tuple(row), (source['unsubscribe_url'], 0))
 
 
 if __name__=='__main__':
