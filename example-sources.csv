@@ -1,0 +1,2 @@
+slug,name,subscribe_url,unsubscribe_url,optout_instructions,evidence_url,category,notes,automation
+example-merchant,Example Merchant,https://example.org/request-print-catalog,https://example.org/postal-optout,"Use the published postal opt-out contact form and supply the mailing address.",https://example.org/postal-optout,Catalog,REPLACE WITH REAL VERIFIED ORGANIZATION AND REAL LINKS,{}

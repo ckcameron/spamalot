@@ -1,0 +1,4 @@
+include .gitignore CHANGELOG.md SHA256SUMS.txt SOURCES.md
+include default-sources.csv example-sources.csv
+recursive-include assets *.gif *.svg
+recursive-include docs *.md

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 280" role="img" aria-labelledby="title desc">
+<title id="title">Spamalot, the consenting postal mail collector</title>
+<desc id="desc">Neon-teal terminal lettering with a stylized envelope, paper sheets, and a blinking cursor.</desc>
+<defs>
+  <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#070e17"/><stop offset="1" stop-color="#172638"/></linearGradient>
+  <linearGradient id="neon"><stop stop-color="#54fbe0"/><stop offset="1" stop-color="#23a4f8"/></linearGradient>
+  <pattern id="dots" width="23" height="23" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#274159"/></pattern>
+</defs>
+<rect width="1100" height="280" rx="17" fill="url(#bg)"/>
+<rect width="1100" height="280" rx="17" fill="url(#dots)" opacity=".8"/>
+<rect x="26" y="23" width="1048" height="234" rx="10" fill="none" stroke="#315770" stroke-width="2"/>
+<circle cx="53" cy="46" r="6" fill="#fb5875"/><circle cx="76" cy="46" r="6" fill="#fbd569"/><circle cx="99" cy="46" r="6" fill="#68d5aa"/>
+<text x="47" y="152" font-family="DejaVu Sans Mono,monospace" font-size="79" font-weight="bold" letter-spacing="-5" fill="url(#neon)">spamalot</text>
+<rect x="477" y="112" width="17" height="45" fill="#4cf3b7"/>
+<text x="49" y="195" font-family="DejaVu Sans Mono,monospace" font-size="22" fill="#b8d9e6">physical mail / only my address / no shady business</text>
+<text x="49" y="231" font-family="DejaVu Sans Mono,monospace" font-size="15" fill="#679ab9">USPS + SQLite + consent; postmarks sold separately.</text>
+<g transform="translate(805 64)">
+  <rect x="37" y="-10" width="155" height="109" rx="5" transform="rotate(14 37 -10)" fill="#2b5871" stroke="#70c7d2" stroke-width="3"/>
+  <path d="M42 1h119 M42 21h119 M42 41h119" stroke="#67a5ad" stroke-width="4"/>
+  <rect x="0" y="46" width="215" height="132" rx="8" fill="#0f445c" stroke="#45e9d1" stroke-width="4"/>
+  <path d="M1 54L107 116 214 54 M2 174L83 112 M213 174L130 112" fill="none" stroke="#5af2db" stroke-width="4"/>
+  <text x="49" y="155" font-family="DejaVu Sans Mono,monospace" font-size="16" font-weight="bold" fill="#d5fffd">TO: MYSELF</text>
+</g>
+</svg>

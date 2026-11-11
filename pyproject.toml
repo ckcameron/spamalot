@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spamalot"
+version = "2.1.0"
+description = "Consent-first tracker for physical U.S. postal mail subscriptions"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "CC-BY-NC-SA-4.0"
+license-files = ["LICENSE.txt"]
+
+[project.scripts]
+spamalot = "spamalot:main"
+
+[tool.setuptools]
+py-modules = ["spamalot", "source_health", "source_discovery", "manuals"]
+packages = ["spamalot_data"]
+
+[tool.setuptools.package-data]
+spamalot_data = ["default-sources.json"]
+
+[tool.setuptools.data-files]
+"share/man/man1" = ["man/man1/spamalot.1"]

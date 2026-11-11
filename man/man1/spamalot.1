@@ -1,0 +1,114 @@
+.TH SPAMALOT 1 "2026-11-03" "spamalot 2.1" "User Commands"
+.SH NAME
+spamalot \- manage consenting U.S. physical-postal catalog and print subscriptions
+.SH SYNOPSIS
+.B spamalot
+.RI [ --db " DATABASE" ]
+.RI [ --profile " FILE" ]
+.RI [ --receipts " DIRECTORY" ]
+.I COMMAND
+.RI [ OPTIONS ]
+.SH DESCRIPTION
+Track requests for physical magazines, catalogs, church publications, NGO materials,
+and policy circulars sent to the named recipient's lawful U.S. postal address.
+No electronic-only subscriptions are included. The program opens official web pages,
+asks the user to make and confirm each request, and creates a local JSON receipt.
+It never submits an entire bulk batch unattended and never bypasses anti-bot controls.
+No merchant acceptance or actual delivery is guaranteed.
+.SH COMMANDS
+.TP
+.B init
+Create a private example profile and import bundled sources into SQLite.
+.TP
+.B sync-defaults [--update]
+Import new bundled sources without changing the local subscription history.
+--update refreshes known URLs/descriptions but cannot re-enable disabled sources.
+.TP
+.B sources [--category TEXT]
+List sources, their postal request and removal URLs, and their health state.
+.TP
+.B subscribe [--all | --source SLUG | --file FILE] [--category TEXT] [--dry-run]
+Interactively request physical mail. Only eligible nonbroken sources are selected
+by --all. Options --automate and --no-browser are supported.
+.TP
+.B unsubscribe [--all | --source SLUG | --file FILE] [--dry-run]
+Interactively request postal-mail removal. --all covers recorded past subscriptions,
+not all U.S. direct marketers. Opt-out remains possible for a disabled source.
+.TP
+.B check-sources [--source SLUG] [--no-repair] [--suggest]
+Run read-only HTTPS checks of subscription, unsubscribe and evidence URLs.
+Check for HTTP failures and plausible page content. Apply same-organization HTTPS
+redirects only when the result passes basic content inspection. Two separate
+missing-page checks disable a source by default; transient errors only flag review.
+.TP
+.B adopt-url --source SLUG --field FIELD --url HTTPS_URL
+Manually accept an official replacement URL after reviewing the form.
+.TP
+.B discover --provider {openai,gemini,perplexity} [--model MODEL] [--category TEXT] [--check]
+Call one public web-grounded AI API using a locally configured API key. This may
+incur charges. A candidate is untrusted, requires a published postal unsubscribe
+method and does not enter the default list without review.
+.TP
+.B candidates
+Show unreviewed AI suggestions and the underlying URLs/citations.
+.TP
+.B promote-candidate --id UUID
+Require personal verification of postal signup and opt-out pages, then import
+a candidate into SQLite. The source is initially disabled for --all.
+.TP
+.B enable-source --source SLUG
+Enable a manually checked source for --all.
+.TP
+.B disable-source --source SLUG
+Keep the source and history but exclude it from automatic --all selection.
+.TP
+.B export-defaults --file FILE [--include-review]
+Write enabled, nonbroken source entries to new JSON. Does not overwrite source
+bundles unless the caller explicitly names their path. A new export will not
+include disabled or broken sources.
+.TP
+.B import-sources --file FILE [--update]
+Import user-curated CSV/JSON sources with official physical-mail opt-out details.
+Imported sources are disabled until individually reviewed and enabled.
+.TP
+.B history
+Show recent subscription and cancellation audit records.
+.TP
+.B build-docs [--output DIR]
+Create this manual page and operational Markdown reference files.
+.SH FILES
+.TP
+.I profile.json
+Your legitimate U.S. street address, private to your machine; never sent to AI APIs.
+.TP
+.I spamalot.sqlite3
+Source records, health checks, URL changes, request events and AI candidates.
+.TP
+.I receipts/
+Timestamped, permission-restricted JSON receipts of acknowledged runs.
+.TP
+.I default-sources.json
+Bundled source catalog with source-specific printed-mail cancellation evidence.
+.SH ENVIRONMENT
+.TP
+.B OPENAI_API_KEY
+API key for OpenAI Responses API with web search.
+.TP
+.B GEMINI_API_KEY
+API key for Gemini Grounding with Google Search.
+.TP
+.B PERPLEXITY_API_KEY
+API key for the Perplexity Sonar API.
+.SH WARNINGS
+This program has not been tested for all legal ramifications. Review local,
+state and federal law and every merchant's terms before making requests. It is
+restricted to the actual named recipient at their own lawful U.S. postal address.
+The recipient must genuinely want each selected source's goods, services, or
+publications and accepts responsibility for their use. Author liability is
+disclaimed to the extent permitted by law.
+Published site contact information may be outdated. A successful HTTP status
+is not proof that a postal subscription or cancellation is operational.
+Neither the author nor the software offers any warranty, to the fullest extent
+allowed by law. License: CC BY-NC-SA 4.0; see LICENSE.txt.
+.SH SEE ALSO
+README.md, SOURCES.md, docs/ARCHITECTURE.md, docs/SOURCE_FORMAT.md

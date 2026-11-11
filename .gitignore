@@ -1,0 +1,18 @@
+# Runtime state: do not commit recipient data or receipts.
+profile.json
+spamalot.sqlite3
+spamalot.sqlite3-*
+postal_mail.sqlite3
+postal_mail.sqlite3-*
+receipts/
+*.sqlite3
+*.db
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Local package builds.
+build/
+dist/
+*.egg-info/
