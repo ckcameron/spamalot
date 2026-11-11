@@ -1,0 +1,53 @@
+name: Sync wiki
+
+# GitHub Wiki is a separate Git repository. The first Wiki page must be
+# created in the GitHub UI before the wiki Git endpoint is initialized.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check wiki authentication
+        env:
+          WIKI_PUSH_TOKEN: ${{ secrets.WIKI_PUSH_TOKEN }}
+        run: |
+          if [ -z "$WIKI_PUSH_TOKEN" ]; then
+            echo "::error::Set WIKI_PUSH_TOKEN to a fine-grained token with the wiki write permissions required by GitHub."
+            exit 1
+          fi
+      - name: Publish tracked wiki pages
+        env:
+          WIKI_PUSH_TOKEN: ${{ secrets.WIKI_PUSH_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -eu
+          git config --global user.name "spamalot-docs"
+          git config --global user.email "spamalot-docs@users.noreply.github.com"
+          # Keep token out of command-line arguments and remote URLs.
+          printf 'protocol=https\nhost=github.com\nusername=x-access-token\npassword=%s\n\n' "$WIKI_PUSH_TOKEN" > "$RUNNER_TEMP/wiki-credentials"
+          chmod 600 "$RUNNER_TEMP/wiki-credentials"
+          trap 'rm -f "$RUNNER_TEMP/wiki-credentials"' EXIT
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0=credential.helper
+          export GIT_CONFIG_VALUE_0="store --file=$RUNNER_TEMP/wiki-credentials"
+          git clone "https://github.com/$REPOSITORY.wiki.git" "$RUNNER_TEMP/wiki"
+          for page in wiki/*.md; do
+            cp "$page" "$RUNNER_TEMP/wiki/$(basename "$page")"
+          done
+          cd "$RUNNER_TEMP/wiki"
+          git add -- '*.md'
+          if git diff --cached --quiet; then
+            echo "Wiki already current."
+            exit 0
+          fi
+          git commit -m "Update Spamalot wiki documentation"
+          git push origin HEAD
