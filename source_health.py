@@ -33,11 +33,15 @@ class Observation:
     suggested_url: str = ''
 
 
+# urllib's default redirects would skip validation of each hop. Handle them
+# explicitly so a public HTTPS URL cannot silently lead to a local address.
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
 
 
+# Minimal link extraction for replacement suggestions. No page content is
+# executed, and the caller must approve every suggested destination.
 class PageLinks(HTMLParser):
     def __init__(self):
         super().__init__()
@@ -98,6 +102,8 @@ def same_organization_host(a: str, b: str) -> bool:
     return left == right or left.endswith('.' + right) or right.endswith('.' + left)
 
 
+# Distinguish permanent missing pages from bot challenges and transient errors.
+# Only repeatable missing-page evidence can disable a default source.
 def page_assessment(status: int, content_type: str, body: bytes, role: str) -> tuple[str, str]:
     if status in (404, 410):
         return 'broken', f'HTTP {status}: missing resource'
@@ -135,6 +141,8 @@ def page_assessment(status: int, content_type: str, body: bytes, role: str) -> t
     return 'ok', 'Page reachable; substantive signup/opt-out eligibility still requires human review'
 
 
+# Bound the response and redirect chain. This is a conservative link checker,
+# not a general-purpose crawler or browser replacement.
 def fetch_page(url: str, *, timeout: int = 12) -> tuple[int, str, bytes, str, list[str]]:
     """GET one public page; follow only a small number of validated HTTPS redirects."""
     opener = build_opener(NoRedirect(), HTTPSHandler(context=ssl.create_default_context()))
