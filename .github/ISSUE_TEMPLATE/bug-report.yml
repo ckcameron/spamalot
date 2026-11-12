@@ -1,0 +1,41 @@
+name: Bug report
+description: Report a problem with Spamalot.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues are public. Replace names, mailing addresses, API keys, and receipt contents with dummy data before posting.
+        [Report security vulnerabilities privately](https://github.com/ckcameron/spamalot/security/policy#report-a-vulnerability).
+  - type: input
+    id: environment
+    attributes:
+      label: Version and environment
+      description: Include the Spamalot version or commit, Python version, and operating system.
+      placeholder: Spamalot 2.1.0, Python 3.12, Ubuntu 24.04
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include the command and flags you used. For a publisher-specific problem, include the source slug.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Redacted command output
+      description: Share only the lines that help explain the problem. Remove personal data and credentials.
+      render: text
