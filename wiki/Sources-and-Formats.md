@@ -1,6 +1,6 @@
 # Source registry and import formats
 
-The bundled `default-sources.json` is authoritative. `default-sources.csv` is its human-editable/exportable counterpart. `SOURCES.md` is the publisher-by-publisher index of physical subscription and postal opt-out instructions.
+The bundled `spamalot_data/default-sources.json` is authoritative. `default-sources.csv` is its readable counterpart. The [postal source directory](Postal-source-directory) lists each publisher’s signup and removal instructions.
 
 ## Required source fields
 

@@ -13,16 +13,17 @@
 > own mailbox to stop looking so lonely. **No borrowed identities, no third-party
 > addresses, no CAPTCHA shenanigans.**
 
-Track legitimate requests for **printed catalogs, church publications, NGO newsletters,
-policy circulars, and other physical U.S. postal mail**. Includes an expandable SQLite
-registry, health-checking and broken-link review, optional AI-assisted source discovery,
-independent subscribe/unsubscribe flows, and JSON receipts. The bundled registry
-contains **45 sources**, not a promise that 45 subscriptions will succeed.
+Spamalot keeps a local record of the **paper catalogs, newsletters, and magazines**
+you ask publishers to send. It opens each publisher's page so you can review the
+form and decide what to submit. It keeps a JSON receipt of the result you report.
+The bundled registry lists **45 sources** with signup and removal instructions.
 
-**What it does not do:** automatically sign up other people, bypass website controls,
-forge acceptance receipts, or unsubscribe you from the whole U.S. postal system.
-The regular workflow opens official publisher pages for individual user-reviewed actions.
-Playwright support is optional and requires source-specific inspected adapters.
+[Project wiki](https://github.com/ckcameron/spamalot/wiki) ·
+[Command reference](docs/COMMANDS.md) · [Source directory](SOURCES.md)
+
+The [editable wiki pages](https://github.com/ckcameron/spamalot/tree/main/wiki) live in this repository. Maintainers can
+publish updates with the [manual Sync wiki workflow](.github/workflows/sync-wiki.yml)
+when its wiki write credential is configured.
 
 <p align="center"><img src="assets/legal-warning.gif" width="860" alt="FLASHING RED LEGAL WARNING: U.S. addresses only. You must be the actual named recipient, check local law and publisher terms, accept responsibility, and understand there is no warranty and author liability is disclaimed to the extent allowed by law." /></p>
 
@@ -38,33 +39,11 @@ for your use.** The software is provided **as-is**, without warranty or author l
 **Accessibility:** The red warning above alternates at approximately 0.56 flashes per
 second. The full legal text is also available here in static text and in the CLI.
 
-Python 3.10+; only the standard library is required for normal interactive
-operation. Published request pages, postal opt-outs, and AI research suggestions
-must always be inspected manually; no third-party submissions or provider API calls
-were performed as part of this release. Some print subscriptions include optional
-email/SMS or solicitation preferences; inspect and decline unwanted channels.
+The normal interactive workflow uses Python's standard library. Review publisher
+pages, opt-out instructions, and AI suggestions before acting. Some print forms
+also offer email, SMS, or fundraising contact. Decline channels you don't want.
 
 ---
-
-## Project documentation
-
-The source-controlled [wiki documentation](wiki/Home.md) contains a full
-[setup guide](wiki/Getting-Started.md), [command reference](wiki/Commands.md),
-[source registry and import reference](wiki/Sources-and-Formats.md),
-[health-check and link-repair notes](wiki/Source-Health.md),
-[AI research workflow](wiki/AI-Discovery.md),
-[browser-assisted operations](wiki/Browser-Operations.md),
-[receipt and SQLite model](wiki/Receipts-and-Data.md),
-[architecture](wiki/Architecture.md), [developer notes](wiki/Development.md),
-[legal and recipient restrictions](wiki/Safety-and-Licensing.md), and
-[troubleshooting](wiki/Troubleshooting.md).
-
-GitHub serves the live wiki from a separate Git repository, so the tracked
-`wiki/` directory remains the reviewable reference copy. After enabling the
-repository Wiki and creating its initial page, run the
-[manual Sync wiki workflow](.github/workflows/sync-wiki.yml) with an authorized
-`WIKI_PUSH_TOKEN` secret to publish these pages. The repository's Wiki tab
-is **not** populated merely by committing files under `wiki/`.
 
 ## Installation
 
@@ -82,8 +61,8 @@ without installing anything.
 
 A private `profile.json` template, `spamalot.sqlite3`, and `receipts/` are created.
 Edit `profile.json` with your **own** accurate U.S. postal recipient/address.
-You are required to type the full consent/liability acknowledgment before every
-command. There is no flag for unattended consent or third-party addresses.
+Operational commands ask for the consent and liability acknowledgment in an
+interactive terminal. Use `spamalot --help` to browse options.
 
 For existing 1.0/1.1 users, retain your database and profile, replace the code and
 bundled registry, then run:
@@ -111,7 +90,7 @@ spamalot sources --category Church
 spamalot sources --category NGO
 spamalot sources --category Political
 
-# Read-only preview: makes no outside requests to any publisher.
+# Preview the selection and save a local receipt.
 spamalot subscribe --all --dry-run
 
 # Explicit interactive postal requests, one at a time.
@@ -146,8 +125,8 @@ spamalot check-sources --source highcountrygardens --no-repair
 # After personally checking a proposed new route on the same publisher domain:
 spamalot adopt-url --source highcountrygardens --field subscribe_url --url https://www.highcountrygardens.com/pages/mail-sign-up
 
-# Export only enabled sources not known to be broken.
-spamalot export-defaults --file verified-defaults.json
+# Export enabled sources with healthy or unchecked status.
+spamalot export-defaults --file reviewed-sources.json
 spamalot import-sources --file additional-sources.csv
 spamalot enable-source --source my-reviewed-source
 spamalot disable-source --source unused-source
@@ -233,7 +212,7 @@ adapters, and no automated CAPTCHA, payment, sweepstakes, or anti-bot workaround
 | `receipts/` | Timestamped local JSON receipts for acknowledged runs |
 
 The program makes a receipt for each acknowledged CLI run, including dry-runs
-and unsuccessful requested operations. A receipt distinguishes
+and unsuccessful operations that reach the audit log. A receipt distinguishes
 `user_reported_submitted`, `site_confirmation_observed`, `request_unverified`,
 `not_submitted`, and `dry_run`; none is a guarantee of postal delivery.
 The SQLite and receipts files should be secured and excluded from public VCS.
@@ -247,10 +226,13 @@ python3 -m unittest discover -v
 python3 -m compileall -q spamalot.py source_health.py source_discovery.py manuals.py
 ```
 
-If your system lacks `man`, the `docs/` Markdown references cover the same
-commands. The tests use in-memory/temporary databases, stubbed HTTP and stubbed
-AI replies: they do **not** execute live publisher subscriptions, cancellations,
-or paid AI requests. See `docs/ARCHITECTURE.md` for specific verification limits.
+The [GitHub Actions workflow](.github/workflows/tests.yml) runs the offline
+suite and checks package installation on Python 3.10–3.14. Tests use temporary
+databases and stubbed HTTP or provider responses. They do not verify live
+publisher forms, cancellations, or paid AI requests.
+
+The [architecture guide](docs/ARCHITECTURE.md) explains how the registry,
+receipts, source checks, and discovery fit together.
 
 ## Legal and recipient restrictions
 

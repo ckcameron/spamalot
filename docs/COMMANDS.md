@@ -1,9 +1,9 @@
 # Command reference
 
-Run `spamalot --help` for argument-level help. Each acknowledged run produces
-an audit receipt in `receipts/`, including failed operations and dry runs.
-Operations require a local interactive acknowledgment. The address profile is
-used only for the user-managed signup and cancellation actions.
+Run `spamalot --help` for options. Operational commands require an
+acknowledgment in an interactive terminal. Once a run starts, Spamalot saves
+its receipt in `receipts/`, including dry runs and failed operations. Pass
+`--db`, `--profile`, or `--receipts` before the subcommand to use another path.
 
 | Command | Purpose |
 | --- | --- |
@@ -12,18 +12,30 @@ used only for the user-managed signup and cancellation actions.
 | `sources` / `history` | List current status and past request events. |
 | `subscribe --all --dry-run` | Preview all eligible, nonbroken postal sources. |
 | `subscribe --source slug` | Open an individual postal request form. |
-| `unsubscribe --all` | Individually request opt-out for all historically requested sources. |
+| `unsubscribe --source SLUG` | Show the publisher's removal instructions and open its page. |
+| `unsubscribe --all` | Go through all sources with a recorded signup attempt. |
 | `check-sources --suggest` | Read-only checks, safe redirect repair and official-site URL suggestions. |
 | `adopt-url` | Apply one manually verified replacement on the same organization domain. |
 | `discover --provider gemini --category NGO --check` | Get source candidates from public web-grounded AI. |
 | `candidates` / `promote-candidate` | Examine and manually accept a discovery result. |
 | `enable-source` / `disable-source` | Change default eligibility without deleting history. |
-| `export-defaults --file new-defaults.json` | Export enabled sources with health status not marked broken. |
-| `import-sources --file verified.csv` | Import custom candidates, disabled pending verification. |
+| `export-defaults --file new-defaults.json` | Export enabled sources with healthy or unchecked status. Add `--include-review` to include enabled sources under review. |
+| `import-sources --file my-sources.csv` | Import a CSV or JSON registry. New imports are disabled by default. |
 | `build-docs` | Generate this guide, man page and architecture notes. |
 
-`--all` never silently includes a candidate or source marked as broken.
-Manual opt-out remains available for previously used broken/disabled sources.
+## Select and record requests
+
+Use `--source SLUG` for a single publisher or repeat it for several. A
+`--file` list accepts slugs as one-per-line text, a JSON array, or CSV with a
+`slug` column. `subscribe --all` selects enabled sources that are eligible for
+a new request. `unsubscribe --all` uses signup history and includes sources
+that later broke or were disabled.
+
+`--dry-run` previews the selection and records it locally without using the
+address profile or opening a browser. `--no-browser` prints the URLs for you
+to open yourself. For a live request, confirm your address and complete the
+publisher's own procedure. The receipt records your report or a browser
+confirmation signal. Contact the publisher to confirm its decision.
 
 ## Checking a source
 

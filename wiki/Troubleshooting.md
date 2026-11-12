@@ -16,4 +16,4 @@
 
 **Browser automation refuses to submit.** The site lacks a reviewed adapter, a selector may have changed, or the visible per-request confirmation was not given. Use ordinary assisted mode and inspect the actual form.
 
-**I can't open the live GitHub Wiki.** Enable the Wiki feature and create its initial `Home` page in the GitHub UI. The pages are also browseable under [`wiki/`](https://github.com/ckcameron/spamalot/tree/main/wiki). Run the manual Sync wiki workflow once Wiki is initialized and an authorized token is configured. See [[Development]].
+**I can't open the live GitHub Wiki.** Read the [source-controlled pages](https://github.com/ckcameron/spamalot/tree/main/wiki). See [Development](Development) for instructions on publishing changes.
