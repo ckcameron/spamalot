@@ -1,4 +1,4 @@
-.TH SPAMALOT 1 "2026-11-03" "spamalot 2.1" "User Commands"
+.TH SPAMALOT 1 "2026-11-11" "spamalot 2.1.0" "User Commands"
 .SH NAME
 spamalot \- manage consenting U.S. physical-postal catalog and print subscriptions
 .SH SYNOPSIS
@@ -11,10 +11,12 @@ spamalot \- manage consenting U.S. physical-postal catalog and print subscriptio
 .SH DESCRIPTION
 Track requests for physical magazines, catalogs, church publications, NGO materials,
 and policy circulars sent to the named recipient's lawful U.S. postal address.
-No electronic-only subscriptions are included. The program opens official web pages,
-asks the user to make and confirm each request, and creates a local JSON receipt.
-It never submits an entire bulk batch unattended and never bypasses anti-bot controls.
-No merchant acceptance or actual delivery is guaranteed.
+Spamalot opens official publisher pages so the named recipient can review and
+complete each request. Use an interactive terminal to acknowledge the consent
+and liability notice before running a command. Dry runs preview the selected
+sources and write a local receipt without opening a publisher page.
+A receipt records a user report or browser observation. Confirm acceptance
+or cancellation with the publisher when needed.
 .SH COMMANDS
 .TP
 .B init
@@ -32,8 +34,8 @@ Interactively request physical mail. Only eligible nonbroken sources are selecte
 by --all. Options --automate and --no-browser are supported.
 .TP
 .B unsubscribe [--all | --source SLUG | --file FILE] [--dry-run]
-Interactively request postal-mail removal. --all covers recorded past subscriptions,
-not all U.S. direct marketers. Opt-out remains possible for a disabled source.
+Show the publisher's removal procedure and open its page. --all selects
+sources with a recorded signup attempt, including disabled and broken entries.
 .TP
 .B check-sources [--source SLUG] [--no-repair] [--suggest]
 Run read-only HTTPS checks of subscription, unsubscribe and evidence URLs.
@@ -63,13 +65,13 @@ Enable a manually checked source for --all.
 Keep the source and history but exclude it from automatic --all selection.
 .TP
 .B export-defaults --file FILE [--include-review]
-Write enabled, nonbroken source entries to new JSON. Does not overwrite source
-bundles unless the caller explicitly names their path. A new export will not
-include disabled or broken sources.
+Write enabled sources with healthy or unchecked status to a new JSON file.
+--include-review adds enabled sources flagged for review. Existing files are
+protected from overwrite.
 .TP
 .B import-sources --file FILE [--update]
 Import user-curated CSV/JSON sources with official physical-mail opt-out details.
-Imported sources are disabled until individually reviewed and enabled.
+New imports are disabled by default. Review each source before enabling it.
 .TP
 .B history
 Show recent subscription and cancellation audit records.
@@ -111,4 +113,7 @@ is not proof that a postal subscription or cancellation is operational.
 Neither the author nor the software offers any warranty, to the fullest extent
 allowed by law. License: CC BY-NC-SA 4.0; see LICENSE.txt.
 .SH SEE ALSO
-README.md, SOURCES.md, docs/ARCHITECTURE.md, docs/SOURCE_FORMAT.md
+README.md, SOURCES.md, docs/COMMANDS.md, docs/ARCHITECTURE.md, docs/SOURCE_FORMAT.md.
+.UR https://github.com/ckcameron/spamalot/wiki
+Project wiki
+.UE

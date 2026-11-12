@@ -55,15 +55,25 @@ from source_health import check_url, replacement_suggestions, same_organization_
 
 VERSION = '2.1.0'
 AGREEMENT = 'I AM THE RECIPIENT; I CHECKED LOCAL LAW; I ACCEPT RESPONSIBILITY'
-STATES = set('AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC'.split())
-FIELDS = ('first_name', 'last_name', 'address1', 'address2', 'city', 'state', 'zip', 'email', 'phone')
-SOURCE_COLUMNS = ('slug', 'name', 'subscribe_url', 'unsubscribe_url', 'optout_instructions', 'evidence_url', 'category', 'notes', 'automation')
+STATES = set((
+    'AL AK AZ AR CA CO CT DE FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS '
+    'MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY DC'
+).split())
+FIELDS = (
+    'first_name', 'last_name', 'address1', 'address2', 'city', 'state', 'zip', 'email', 'phone',
+)
+SOURCE_COLUMNS = (
+    'slug', 'name', 'subscribe_url', 'unsubscribe_url', 'optout_instructions',
+    'evidence_url', 'category', 'notes', 'automation',
+)
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec='seconds')
 
 
 def private_write(path: Path, data: str) -> None:
+    """Create a new private file without overwriting an existing one."""
     path.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
     try:
@@ -81,8 +91,11 @@ def secure_existing(path: Path) -> None:
 
 def is_https(url: str) -> bool:
     try:
-        p = urlsplit(url)
-        return p.scheme == 'https' and bool(p.netloc) and not p.username and not p.password
+        parsed = urlsplit(url)
+        return (
+            parsed.scheme == 'https' and bool(parsed.netloc)
+            and not parsed.username and not parsed.password
+        )
     except ValueError:
         return False
 
@@ -94,9 +107,8 @@ def normalize_slug(value: str) -> str:
     return value
 
 
-# Source files are editable input, not trusted configuration. Validate every
-# address and opt-out field before a record can reach the local registry.
 def validated_source(record: dict) -> dict:
+    """Check the record's shape and normalize fields for SQLite."""
     if not isinstance(record, dict):
         raise ValueError('Each source must be a JSON object / CSV row.')
     row = {k: (record.get(k) or '') for k in SOURCE_COLUMNS}
@@ -107,7 +119,7 @@ def validated_source(record: dict) -> dict:
     for key in ('subscribe_url', 'unsubscribe_url', 'evidence_url'):
         if not is_https(str(row[key])):
             raise ValueError(f'{row["slug"]}: {key} must be an HTTPS URL (published official proof required)')
-    # Require a specific published exit route before any source can be added.
+    # Require opt-out instructions in the record. The operator reviews the linked evidence.
     if len(str(row['optout_instructions']).strip()) < 20:
         raise ValueError(f'{row["slug"]}: supply a real, published postal opt-out procedure')
     auto = row.get('automation') or {}
@@ -128,9 +140,8 @@ def validated_source(record: dict) -> dict:
     return {k: str(row[k]).strip() for k in SOURCE_COLUMNS}
 
 
-# Keep schema creation and forward-only migrations together. The database is a
-# durable audit log; upgrading it must never silently reset request history.
 def connect(db_path: Path) -> sqlite3.Connection:
+    """Open the audit database and apply any pending schema migrations."""
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -198,10 +209,9 @@ def connect(db_path: Path) -> sqlite3.Connection:
     return conn
 
 
-# Import is deliberately conservative: existing entries survive unless the
-# operator explicitly requests metadata replacement.
 def import_sources(conn: sqlite3.Connection, items: list[dict], update: bool = False,
                    origin: str = 'imported') -> tuple[int, int]:
+    """Validate the full batch before changing the registry."""
     validated = [validated_source(i) for i in items]
     enabled = {normalize_slug(i['slug']): int(bool(i.get('default_enabled', origin == 'bundled')))
                for i in items}
@@ -214,6 +224,7 @@ def import_sources(conn: sqlite3.Connection, items: list[dict], update: bool = F
             continue
         now = utc_now()
         if exists:
+            # Refresh the publisher's details without resetting local health or eligibility.
             conn.execute('''UPDATE sources SET name=:name,subscribe_url=:subscribe_url,
                 unsubscribe_url=:unsubscribe_url,optout_instructions=:optout_instructions,
                 evidence_url=:evidence_url,category=:category,notes=:notes,
@@ -247,11 +258,14 @@ def read_sources_file(path: Path) -> list[dict]:
 
 
 def load_default_sources() -> list[dict]:
-    """Read bundled, evidence-backed postal sources; fail closed if missing."""
-    external = Path(__file__).resolve().with_name('spamalot_data') / 'default-sources.json'
-    if not external.is_file():
-        raise ValueError(f'Missing bundled source database: {external}; reinstall Spamalot or restore the file from the source archive')
-    return read_sources_file(external)
+    """Read the registry shipped with the source tree and the installed package."""
+    registry = Path(__file__).resolve().with_name('spamalot_data') / 'default-sources.json'
+    if not registry.is_file():
+        raise ValueError(
+            f'Missing bundled source database: {registry}; '
+            'reinstall Spamalot or restore the file from the source archive'
+        )
+    return read_sources_file(registry)
 
 
 def category_matches(category: str, filters: list[str] | None) -> bool:
@@ -260,22 +274,24 @@ def category_matches(category: str, filters: list[str] | None) -> bool:
 
 
 def load_profile(path: Path) -> dict:
+    """Check address fields for shape. The user confirms they receive mail there."""
     if not path.is_file():
         raise ValueError(f'Profile missing: {path}. Run `init` and edit your profile.')
-    with path.open(encoding='utf-8') as f:
-        p = json.load(f)
-    for k in ('first_name', 'last_name', 'address1', 'city', 'state', 'zip'):
-        if not isinstance(p.get(k), str) or not p[k].strip() or p[k].startswith('YOUR_'):
-            raise ValueError(f'Enter your own {k} in {path}')
-    p = {key: str(p.get(key) or '').strip() for key in FIELDS}
-    p['state'] = p['state'].upper()
-    if p['state'] not in STATES:
+    with path.open(encoding='utf-8') as profile_file:
+        raw_profile = json.load(profile_file)
+    for key in ('first_name', 'last_name', 'address1', 'city', 'state', 'zip'):
+        value = raw_profile.get(key)
+        if not isinstance(value, str) or not value.strip() or value.startswith('YOUR_'):
+            raise ValueError(f'Enter your own {key} in {path}')
+    profile = {key: str(raw_profile.get(key) or '').strip() for key in FIELDS}
+    profile['state'] = profile['state'].upper()
+    if profile['state'] not in STATES:
         raise ValueError('Profile state must be a U.S. state or DC abbreviation')
-    if not re.fullmatch(r'\d{5}(?:-\d{4})?', p['zip']):
+    if not re.fullmatch(r'\d{5}(?:-\d{4})?', profile['zip']):
         raise ValueError('ZIP must be 5 or 5+4 digits')
-    if '@' in p['address1'] or '@' in p['city']:
+    if '@' in profile['address1'] or '@' in profile['city']:
         raise ValueError('Profile address is not a recognizable U.S. postal address')
-    return p
+    return profile
 
 
 def disclaimer() -> None:
@@ -305,8 +321,6 @@ Results are user-reported requests, not verified merchant acceptances.
 ''')
 
 
-# Acknowledgment is intentionally interactive. This is not an unattended
-# bulk-subscription tool and there is no --yes shortcut.
 def acknowledge() -> str:
     disclaimer()
     if not sys.stdin.isatty():
@@ -319,8 +333,6 @@ def acknowledge() -> str:
     return AGREEMENT
 
 
-# A run groups all per-source decisions under one audit identifier. It tracks
-# what the operator attempted, not what a publisher ultimately accepted.
 def new_run(conn: sqlite3.Connection, operation: str, agreement: str) -> dict:
     run = {'run_id': str(uuid.uuid4()), 'operation': operation, 'started_at': utc_now(),
            'agreement': agreement, 'events': [], 'notices': [], 'version': VERSION}
@@ -332,6 +344,7 @@ def new_run(conn: sqlite3.Connection, operation: str, agreement: str) -> dict:
 
 def record(conn: sqlite3.Connection, run: dict, row: sqlite3.Row, action: str,
            status: str, details: str) -> None:
+    # Save the URL used for this event so later registry updates leave history intact.
     event = {'event_id': str(uuid.uuid4()), 'run_id': run['run_id'],
              'source': row['slug'], 'organization': row['name'], 'action': action,
              'status': status, 'timestamp': utc_now(),
@@ -344,14 +357,18 @@ def record(conn: sqlite3.Connection, run: dict, row: sqlite3.Row, action: str,
     run['events'].append(event)
 
 
-# Write the local receipt before marking the database run complete. The
-# restrictive file mode avoids publishing the user's audit trail by accident.
 def finalize(conn: sqlite3.Connection, run: dict, receipts_dir: Path) -> Path:
+    """Write the receipt before recording its path in SQLite."""
     run['completed_at'] = utc_now()
-    run['summary'] = {'events': len(run['events']),
-                      'reported_requests': sum(e['status'] in ('user_reported_submitted', 'site_confirmation_observed') for e in run['events']),
-                      'unverified_requests': sum(e['status'] == 'request_unverified' for e in run['events']),
-                      'not_submitted': sum(e['status'] in ('not_submitted', 'dry_run') for e in run['events'])}
+    statuses = [event['status'] for event in run['events']]
+    run['summary'] = {
+        'events': len(statuses),
+        'reported_requests': (
+            statuses.count('user_reported_submitted') + statuses.count('site_confirmation_observed')
+        ),
+        'unverified_requests': statuses.count('request_unverified'),
+        'not_submitted': statuses.count('not_submitted') + statuses.count('dry_run'),
+    }
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     receipt = receipts_dir / f'{stamp}-{run["run_id"][:8]}.json'
     private_write(receipt, json.dumps(run, indent=2, ensure_ascii=False) + '\n')
@@ -361,9 +378,8 @@ def finalize(conn: sqlite3.Connection, run: dict, receipts_dir: Path) -> Path:
     return receipt
 
 
-# State is derived from recorded events rather than a writable "subscribed"
-# flag. An attempt is not proof that a publisher changed its mailing list.
 def latest_state(conn: sqlite3.Connection, slug: str) -> str:
+    """Derive local status from the recorded requests for this source."""
     events = conn.execute('''SELECT action,status FROM events
       WHERE source_slug=? ORDER BY timestamp DESC,rowid DESC''', (slug,)).fetchall()
     # Unsuccessful operations are not state transitions.
@@ -380,9 +396,8 @@ def ever_subscribed(conn: sqlite3.Connection, slug: str) -> bool:
       AND status IN ('user_reported_submitted','site_confirmation_observed','request_unverified') LIMIT 1''', (slug,)).fetchone() is not None
 
 
-# Resolve explicit slugs, selection files, and --all in one place. Opt-out
-# selection intentionally includes broken and manually disabled sources.
 def pick_sources(conn: sqlite3.Connection, args: argparse.Namespace, action: str) -> list[sqlite3.Row]:
+    """Resolve an explicit selection or derive one from registry and request history."""
     rows = {r['slug']: r for r in conn.execute('SELECT * FROM sources ORDER BY name COLLATE NOCASE')}
     names: list[str] = []
     if args.source:
@@ -406,7 +421,7 @@ def pick_sources(conn: sqlite3.Connection, args: argparse.Namespace, action: str
                          if r['default_enabled'] and r['health'] != 'broken'
                          and latest_state(conn, r['slug']) != 'subscribed_or_requested')
         else:
-            # Blanket: EVERY previously recorded opt-in, including where opt-out was attempted.
+            # Include prior signup attempts even for disabled sources or prior opt-outs.
             names.extend(r['slug'] for r in rows.values() if ever_subscribed(conn, r['slug']))
     if action == 'unsubscribe' and not names and not args.all:
         raise ValueError('Specify --source, --file, or --all for unsubscribe')
@@ -423,9 +438,8 @@ def pick_sources(conn: sqlite3.Connection, args: argparse.Namespace, action: str
     return [r for r in selected if category_matches(r['category'], args.category)]
 
 
-# Browser automation is opt-in and form-specific. No guessed controls, hidden
-# browsing, or CAPTCHA handling: the operator reviews each visible form.
 def automation_interactive(row: sqlite3.Row, action: str, profile: dict) -> tuple[str, str]:
+    """Fill a configured form and wait for confirmation before clicking submit."""
     try:
         from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout  # type: ignore
     except ImportError:
@@ -435,8 +449,8 @@ def automation_interactive(row: sqlite3.Row, action: str, profile: dict) -> tupl
         return ('not_submitted', f'No reviewed automation adapter configured for {action}; use assisted mode')
     dest = row['subscribe_url' if action == 'subscribe' else 'unsubscribe_url']
     # Explicit, reviewed selectors only: never guess a submit button or defeat CAPTCHAs.
+    clicked = False
     try:
-        clicked = False
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=False)
             page = browser.new_page()
@@ -469,11 +483,12 @@ def automation_interactive(row: sqlite3.Row, action: str, profile: dict) -> tupl
             browser.close()
             return result
     except (Exception, KeyboardInterrupt) as exc:
-        status = 'request_unverified' if locals().get('clicked', False) else 'not_submitted'
+        status = 'request_unverified' if clicked else 'not_submitted'
         return (status, f'Browser automation interrupted or failed; check source manually: {type(exc).__name__}: {exc}')
 
 
 def assisted_interactive(row: sqlite3.Row, action: str, no_browser: bool) -> tuple[str, str]:
+    """Show the publisher's instructions and record the user's reported outcome."""
     url = row['subscribe_url' if action == 'subscribe' else 'unsubscribe_url']
     if action == 'unsubscribe':
         print('Published POSTAL opt-out procedure:', row['optout_instructions'])
@@ -521,23 +536,26 @@ def save_change(conn: sqlite3.Connection, run: dict, slug: str, field: str,
 
 def apply_url_change(conn: sqlite3.Connection, run: dict, row: sqlite3.Row,
                      field: str, new_url: str, reason: str) -> None:
+    # Field names become SQL identifiers, so restrict them to known columns.
     if field not in ('subscribe_url', 'unsubscribe_url', 'evidence_url') or not is_https(new_url):
         raise ValueError('Invalid URL field or replacement')
     old = row[field]
     if old == new_url:
         return
     save_change(conn, run, row['slug'], field, old, new_url, reason)
-    run.setdefault('changes', []).append({'source': row['slug'], 'field': field, 'old_url': old, 'new_url': new_url, 'reason': reason})
+    run.setdefault('changes', []).append({
+        'source': row['slug'], 'field': field, 'old_url': old,
+        'new_url': new_url, 'reason': reason,
+    })
     conn.execute(f'UPDATE sources SET {field}=?, updated_at=?, health=? WHERE slug=?',
                  (new_url, utc_now(), 'review', row['slug']))
     conn.commit()
 
 
-# A health check examines publicly visible URLs only. A reachable page is
-# not evidence of a functional signup, and ambiguous errors warrant review.
 def check_sources(conn: sqlite3.Connection, run: dict, rows: list[sqlite3.Row],
                   timeout: int, delay: float, repair: bool, suggest: bool,
                   failure_threshold: int) -> dict:
+    """Record each page observation and update the source's overall health."""
     summary = {'checked': 0, 'healthy': 0, 'review': 0, 'broken': 0, 'redirect_repairs': 0}
     run['checks'] = []
     field_roles = (('subscribe_url', 'subscribe'), ('unsubscribe_url', 'unsubscribe'),
@@ -566,41 +584,45 @@ def check_sources(conn: sqlite3.Connection, run: dict, rows: list[sqlite3.Row],
                 (str(uuid.uuid4()), run['run_id'], row['slug'], utc_now(), role,
                  result.result, result.http_status, result.url, result.final_url,
                  result.suggested_url, result.reason))
-            observations.append(result)
+            observations.append((role, result))
             if delay:
                 time.sleep(delay)
-        failed = any(o.result == 'broken' for o in observations)
-        uncertain = any(o.result == 'review' for o in observations)
-        failures = row['failures'] + 1 if failed else 0
-        status = ('broken' if failed and failures >= failure_threshold else
-                  'review' if failed or uncertain else 'healthy')
-        # Only a confirmed repeatable 404/410/soft404 is grounds to disable by default.
+        missing_page = any(result.result == 'broken' for _, result in observations)
+        needs_review = any(result.result == 'review' for _, result in observations)
+        # Count consecutive checks with a missing page. A timeout alone breaks the streak.
+        failures = row['failures'] + 1 if missing_page else 0
+        if missing_page and failures >= failure_threshold:
+            status = 'broken'
+        elif missing_page or needs_review:
+            status = 'review'
+        else:
+            status = 'healthy'
+        # A recovered page still needs manual approval before it returns to the defaults.
         enabled = 0 if status == 'broken' else row['default_enabled']
-        details = ' | '.join(f'{field_roles[i][1]}: {o.reason}' for i, o in enumerate(observations))
+        details = ' | '.join(f'{role}: {result.reason}' for role, result in observations)
         conn.execute('''UPDATE sources SET checked_at=?,health=?,check_details=?,
                     failures=?,default_enabled=? WHERE slug=?''',
                      (utc_now(), status, details[:3000], failures, enabled, row['slug']))
         conn.commit()
         summary['checked'] += 1
-        summary['broken' if status == 'broken' else 'review' if status == 'review' else 'healthy'] += 1
+        summary[status] += 1
         run['checks'].append({
             'source': row['slug'], 'status': status,
             'default_enabled': bool(enabled), 'consecutive_missing_page_checks': failures,
             'observations': [
-                {'role': field_roles[i][1], 'url': o.url, 'final_url': o.final_url,
-                 'state': o.result, 'http_status': o.http_status,
-                 'suggested_url': o.suggested_url, 'details': o.reason}
-                for i, o in enumerate(observations)
+                {'role': role, 'url': result.url, 'final_url': result.final_url,
+                 'state': result.result, 'http_status': result.http_status,
+                 'suggested_url': result.suggested_url, 'details': result.reason}
+                for role, result in observations
             ],
         })
         print(f'  OVERALL: {status}; consecutive missing-page checks: {failures}; default enabled: {bool(enabled)}')
     return summary
 
 
-# AI search output goes into a quarantine table. Promotion requires independent
-# inspection of both the print signup and the physical-mail removal procedure.
 def discover_candidates(conn: sqlite3.Connection, provider: str, model: str,
                         category: str, max_candidates: int, check: bool) -> list[dict]:
+    """Queue usable-looking responses for review without adding them to the registry."""
     answer, citations = request_candidates(provider, model, category)
     items = parse_candidates(answer)
     stored = []
@@ -614,7 +636,7 @@ def discover_candidates(conn: sqlite3.Connection, provider: str, model: str,
         if parsed['slug'] in known:
             print(f'  Skipped existing source: {parsed["slug"]}')
             continue
-        # No network data from an AI provider is sufficient to establish validity.
+        # Optional HTTP checks give the reviewer more context about the linked pages.
         checks = {}
         if check:
             for key, role in (('subscribe_url', 'subscribe'), ('unsubscribe_url', 'unsubscribe'),
@@ -636,9 +658,8 @@ def discover_candidates(conn: sqlite3.Connection, provider: str, model: str,
     return stored
 
 
-# Export is a snapshot of locally eligible records, not a claim that every
-# destination currently accepts postal requests.
 def export_sources(conn: sqlite3.Connection, target: Path, include_review: bool) -> int:
+    """Write a snapshot of locally eligible registry entries."""
     rows = conn.execute('''SELECT * FROM sources
             WHERE default_enabled=1 AND health != 'broken' AND
             (? = 1 OR health IN ('healthy','unchecked')) ORDER BY name COLLATE NOCASE''',
@@ -652,8 +673,6 @@ def export_sources(conn: sqlite3.Connection, target: Path, include_review: bool)
     return len(rows)
 
 
-# CLI parsing is kept at the boundary so database and provider functions can
-# be exercised without launching a browser or issuing external requests.
 def run_main() -> int:
     parser = argparse.ArgumentParser(
         prog='spamalot',
@@ -712,6 +731,7 @@ def run_main() -> int:
         p.add_argument('--no-browser', action='store_true', help='Print manual URLs rather than opening a local browser')
         p.add_argument('--dry-run', action='store_true', help='Create receipt listing proposed actions but make no submissions')
     args = parser.parse_args()
+    # Require the acknowledgment before creating local files or starting a run.
     agreement = acknowledge()
     conn = connect(args.db)
     run = new_run(conn, args.command, agreement)
@@ -823,6 +843,7 @@ def run_main() -> int:
         else:
             selected = pick_sources(conn, args, args.command)
             print(f'{len(selected)} organization(s) selected for {args.command}.')
+            # Dry runs need only the registry. Keep the address profile out of that path.
             profile = load_profile(args.profile) if selected and not args.dry_run else {}
             if selected and not args.dry_run:
                 print(f'ADDRESS: {profile["first_name"]} {profile["last_name"]}, {profile["address1"]}, {profile["city"]}, {profile["state"]} {profile["zip"]}')

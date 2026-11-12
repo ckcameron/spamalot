@@ -27,6 +27,4 @@ Edit the templates in `manuals.py` before regenerating `docs/COMMANDS.md`, `docs
 
 GitHub Wiki uses its own Git repository: `https://github.com/ckcameron/spamalot.wiki.git`. GitHub may require enabling Wikis under **Settings → Features** and creating the first wiki page in the UI before the wiki remote exists.
 
-After the wiki has been initialized, run the repo's **Sync wiki** GitHub Actions workflow manually. It copies the tracked `wiki/*.md` pages to the wiki's Git repository using an authorized token. It does not remove unrelated wiki pages.
-
-If GitHub Actions does not have permission to push to the Wiki remote, configure the workflow's `WIKI_PUSH_TOKEN` secret with the required repository permissions or push the files through an authenticated local Git client. Never add a PAT to source control.
+The live wiki is initialized. To publish edits from the repository, run the manual **Sync wiki** workflow if its wiki write credential is configured. The workflow copies the tracked pages to the wiki. Maintainers can also edit an individual page directly on GitHub. Keep the tracked and published copies in sync.

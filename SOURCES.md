@@ -1,8 +1,15 @@
 # Physical U.S. Postal Mail — Curated Sources
 
-**45 organizations and publications. Updated November 3, 2026.**
+**45 bundled organizations and publications. Registry research dated November 3, 2026.**
 
-Every entry links to an official publisher page offering (or documenting how to request) **printed physical postal mail** and an official publisher page documenting physical-mail cancellation. Not every publisher offers an online submission form; some require contacting staff by phone/email. A reachable page is not proof that a form currently works. The published procedures may change. No actual registration or opt-out was performed during preparation.
+Use the slug to find a source in `spamalot sources`, request mail with
+`spamalot subscribe --source SLUG`, or look up its removal instructions with
+`spamalot unsubscribe --source SLUG`. Use `--dry-run` to preview the selected URL.
+
+Each entry records a publisher's instructions for requesting and stopping paper
+mail. Some publishers handle requests by phone or email. Review the current
+instructions before acting. A reachable page only confirms that the server
+responded. This documentation update did not recheck the links or submit requests.
 
 No print-at-home-only, digital-only, donation-required, or unsupported candidate-election mailers are included. Political sources are policy and commentary print publications rather than candidates’ electoral campaign circulars.
 

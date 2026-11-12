@@ -22,8 +22,11 @@ Do **not** import this illustrative example as a real source. Each actual
 source must have an official published postal removal process; email-only
 unsubscribe links do not qualify. `default_enabled=false` excludes a record
 from `subscribe --all` but keeps its details for review and historical opt-out.
-A manually curated imported record starts disabled regardless of its request
-status; use `enable-source` once personally verified.
+New custom imports are disabled by default. Omit `default_enabled` in
+CSV and use a JSON Boolean if you include the field in JSON. After you
+check the signup and removal routes, run `enable-source --source SLUG`.
+Use `import-sources --update` to refresh details for existing slugs while
+keeping their local health, eligibility, and request history.
 
 The source schema also supports manually reviewed Playwright adapters, but
 none are required to run the normal assisted-browser workflow. Do not guess

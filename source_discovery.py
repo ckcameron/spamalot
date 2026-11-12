@@ -1,8 +1,4 @@
-"""Opt-in, API-keyed searches for public physical-mail source candidates.
-
-Candidates are *not* trusted. An AI response cannot subscribe anyone,
-modify default sources, or serve as proof of an unsubscribe method.
-"""
+"""Search for postal-mail sources to put in the CLI's manual review queue."""
 
 from __future__ import annotations
 
@@ -29,12 +25,11 @@ requirement cannot be established, OMIT the candidate."""
 
 
 class ProviderError(RuntimeError):
-    pass
+    """A discovery provider is unavailable or returned an unusable result."""
 
 
-# Provider traffic contains a research prompt only. Never pass profile.json,
-# mailing details, local event history, or stored source credentials.
 def json_post(url: str, headers: dict, payload: dict, timeout: int = 90) -> dict:
+    """Send a discovery request and translate network and response errors for the CLI."""
     req = Request(url, data=json.dumps(payload).encode('utf-8'), headers={
         'Content-Type': 'application/json', 'Accept': 'application/json', **headers,
     }, method='POST')
@@ -52,11 +47,10 @@ def json_post(url: str, headers: dict, payload: dict, timeout: int = 90) -> dict
         raise ProviderError('AI provider returned invalid JSON') from exc
 
 
-# Each provider has its own response schema. Return normalized candidate text
-# and citation URLs; do not treat model text as validated source metadata.
 def request_candidates(provider: str, model: str, category: str = '', timeout: int = 90,
                        requester=json_post) -> tuple[str, list[str]]:
-    """Return text response and provenance URLs, without exposing API keys."""
+    """Return the response text and citation URLs for a single provider request."""
+    # Keep the request limited to the research prompt and optional category.
     prompt = PROMPT + (f'\nFocus primarily on: {category[:250]}.' if category else '')
     if provider == 'openai':
         key = os.getenv('OPENAI_API_KEY', '')
@@ -66,6 +60,7 @@ def request_candidates(provider: str, model: str, category: str = '', timeout: i
                    'tool_choice': 'required', 'input': prompt, 'store': False}
         result = requester('https://api.openai.com/v1/responses',
                            {'Authorization': f'Bearer {key}'}, payload, timeout)
+        # Response items can include search tool output. The candidate list is in text parts.
         chunks, citations = [], []
         for item in result.get('output', []):
             for part in item.get('content', []):
@@ -102,7 +97,7 @@ def request_candidates(provider: str, model: str, category: str = '', timeout: i
 
 
 def parse_candidates(text: str) -> list[dict]:
-    """Accept raw JSON or a fenced JSON array, with an upper bound on size."""
+    """Read the candidate list. The caller still has to validate each record."""
     if len(text) > 120_000:
         raise ProviderError('Response exceeds maximum candidate size')
     text = text.strip()
@@ -112,6 +107,7 @@ def parse_candidates(text: str) -> list[dict]:
     try:
         value = json.loads(text)
     except json.JSONDecodeError:
+        # Some providers wrap an otherwise usable array in explanatory text.
         start, end = text.find('['), text.rfind(']')
         if start < 0 or end < start:
             raise ProviderError('Model did not return a JSON candidate list') from None

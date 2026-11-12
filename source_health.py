@@ -1,8 +1,4 @@
-"""Check public source pages without submitting forms or sending personal data.
-
-A 200 response is a transport check, not evidence of a working subscription.
-The caller controls database state; this module only evaluates HTTP observations.
-"""
+"""Fetch and assess public source pages. The CLI decides how to update the registry."""
 
 from __future__ import annotations
 
@@ -33,16 +29,16 @@ class Observation:
     suggested_url: str = ''
 
 
-# urllib's default redirects would skip validation of each hop. Handle them
-# explicitly so a public HTTPS URL cannot silently lead to a local address.
 class NoRedirect(HTTPRedirectHandler):
+    """Let fetch_page validate each redirect before following it."""
+
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
 
 
-# Minimal link extraction for replacement suggestions. No page content is
-# executed, and the caller must approve every suggested destination.
 class PageLinks(HTMLParser):
+    """Collect homepage links and their labels for replacement suggestions."""
+
     def __init__(self):
         super().__init__()
         self.links: list[tuple[str, str]] = []
@@ -102,9 +98,8 @@ def same_organization_host(a: str, b: str) -> bool:
     return left == right or left.endswith('.' + right) or right.endswith('.' + left)
 
 
-# Distinguish permanent missing pages from bot challenges and transient errors.
-# Only repeatable missing-page evidence can disable a default source.
 def page_assessment(status: int, content_type: str, body: bytes, role: str) -> tuple[str, str]:
+    """Use the response status and page wording as rough signals for review."""
     if status in (404, 410):
         return 'broken', f'HTTP {status}: missing resource'
     if status in (401, 403, 406, 429):
@@ -117,6 +112,7 @@ def page_assessment(status: int, content_type: str, body: bytes, role: str) -> t
         return 'review', f'Unexpected content type: {content_type or "unknown"}'
     if 'application/pdf' in content_type:
         return 'review', 'A PDF is not a verified interactive postal subscription/cancellation form'
+    # Some sites serve their missing-page template with a successful HTTP status.
     sample = unescape(re.sub(r'<[^>]+>', ' ', body.decode('utf-8', 'replace'))).lower()
     sample = re.sub(r'\s+', ' ', sample)
     if any(word in sample[:6000] for word in (
@@ -141,8 +137,6 @@ def page_assessment(status: int, content_type: str, body: bytes, role: str) -> t
     return 'ok', 'Page reachable; substantive signup/opt-out eligibility still requires human review'
 
 
-# Bound the response and redirect chain. This is a conservative link checker,
-# not a general-purpose crawler or browser replacement.
 def fetch_page(url: str, *, timeout: int = 12) -> tuple[int, str, bytes, str, list[str]]:
     """GET one public page; follow only a small number of validated HTTPS redirects."""
     opener = build_opener(NoRedirect(), HTTPSHandler(context=ssl.create_default_context()))
@@ -171,16 +165,17 @@ def fetch_page(url: str, *, timeout: int = 12) -> tuple[int, str, bytes, str, li
 
 
 def check_url(url: str, role: str, *, timeout: int = 12, fetcher=fetch_page) -> Observation:
+    """Report what happened and suggest a replacement for a plausible same-host redirect."""
     try:
         public_https_url(url, resolve=False)
-        status, ctype, body, final, chain = fetcher(url, timeout=timeout)
-        state, detail = page_assessment(status, ctype, body, role)
+        status, content_type, body, final, chain = fetcher(url, timeout=timeout)
+        state, detail = page_assessment(status, content_type, body, role)
         suggestion = final if final != url and same_organization_host(url, final) and state == 'ok' else ''
         if final != url and not same_organization_host(url, final):
             state, detail = 'review', 'Redirected to a different organizational hostname; verify ownership manually'
         return Observation(url, final, state, status, detail, chain, suggestion)
     except (ValueError, OSError, URLError, TimeoutError, ssl.SSLError) as exc:
-        # DNS failures and timeouts are inconclusive; avoid deleting legitimate sites.
+        # Treat DNS failures and timeouts as inconclusive.
         return Observation(url, url, 'review', None, f'{type(exc).__name__}: {exc}', [url])
 
 

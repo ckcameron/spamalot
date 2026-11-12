@@ -1,16 +1,13 @@
-## Documentation maintenance (2026-11-11)
-
-- Added editable `wiki/` documentation, indexed by topic, and a manual GitHub
-  Wiki synchronization workflow. The live Wiki requires first-page setup and
-  authorized credentials; publishing wiki source alone does not initialize it.
-- Annotated source validation, database migration, browser operations, health
-  checks, and audit semantics without changing their intended behavior.
-- Linked wiki documentation from the README. No publisher operations or AI
-  provider calls were performed as part of this documentation update.
-
 # Changelog
 
 Last signed update: 11 November, 2026
+
+## Unreleased
+
+- Added the GitHub wiki and updated the README, command reference, source format,
+  architecture guide, source directory, and manual.
+- Clarified receipts, source health checks, and the discovery review queue.
+- Added offline tests and pull request checks for Python 3.10–3.14.
 
 ## 2.1.0 — Spamalot name and presentation
 
