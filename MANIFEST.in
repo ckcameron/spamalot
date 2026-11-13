@@ -1,5 +1,6 @@
 include .gitignore CHANGELOG.md SHA256SUMS.txt SOURCES.md
 include default-sources.csv example-sources.csv
 recursive-include assets *.gif *.svg
+include assets/social-preview.png
 recursive-include docs *.md
 include test_*.py
