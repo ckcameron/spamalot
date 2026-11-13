@@ -1,4 +1,4 @@
-<p align="center"><img src="assets/spamalot-banner.svg" alt="Spamalot: physical mail, consent-first" width="100%" /></p>
+<p align="center"><img src="assets/social-preview.png" alt="Spamalot: physical mail, consent-first" width="100%" /></p>
 
 <div align="center">
 
